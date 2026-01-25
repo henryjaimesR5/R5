@@ -1,0 +1,99 @@
+site_name: R5 Framework
+site_description: Modern Python framework with IoC, HTTP client, and background tasks
+site_url: https://r5.dev
+repo_url: https://github.com/grupor5/R5
+repo_name: grupor5/R5
+
+theme:
+  name: material
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.suggest
+    - search.highlight
+    - content.code.copy
+    - content.code.annotate
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          options:
+            docstring_style: google
+            show_source: true
+            show_root_heading: true
+            show_root_full_path: false
+            show_signature_annotations: true
+            separate_signature: true
+            merge_init_into_class: true
+            docstring_section_style: table
+
+markdown_extensions:
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.tabbed:
+      alternate_style: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Quick Start: getting-started/quickstart.md
+    - Core Concepts: getting-started/core-concepts.md
+  - Guides:
+    - IoC Container:
+      - Overview: guides/ioc/overview.md
+      - Dependency Injection: guides/ioc/injection.md
+      - Providers: guides/ioc/providers.md
+      - Configuration: guides/ioc/configuration.md
+    - HTTP Client:
+      - Overview: guides/http/overview.md
+      - Basic Usage: guides/http/basic-usage.md
+      - Advanced Features: guides/http/advanced.md
+      - Result Pattern: guides/http/result.md
+    - Background Tasks:
+      - Overview: guides/background/overview.md
+      - Basic Usage: guides/background/basic-usage.md
+      - Integration with IoC: guides/background/ioc-integration.md
+  - Examples:
+    - Simple Examples: examples/simple.md
+    - Real World: examples/real-world.md
+    - Patterns: examples/patterns.md
+  - API Reference:
+    - IoC: api/ioc.md
+    - HTTP: api/http.md
+    - Background: api/background.md
+  - Contributing: contributing.md
+  - Changelog: changelog.md
