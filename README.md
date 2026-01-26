@@ -219,6 +219,7 @@ class AppConfig:
 - **Retry automático** configurable
 - **Handlers** para logging y métricas
 - **Mapeo automático** a DTOs (Pydantic, dataclasses)
+- **Validación de nulos** en campos no-opcionales
 
 ```python
 from R5.http import Http
@@ -239,6 +240,30 @@ async def fetch_data(http: Http):
     # Mapeo a DTO
     user = result.to(UserDTO)
 ```
+
+#### Validación de Valores Nulos
+
+R5 valida automáticamente campos con valores `None` al mapear a dataclasses. Si un campo tiene valor `None` pero no está tipificado como `Optional`, se emite un `UserWarning` indicando la inconsistencia:
+
+```python
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class Product:
+    id: int
+    name: str                    # No es Optional
+    description: Optional[str]   # Es Optional
+
+# JSON: {"id": 1, "name": null, "description": null}
+result = await http.get("https://api.example.com/products/1")
+product = result.to(Product)
+
+# ⚠️ UserWarning: Fields ['name'] have None values but are not typed as Optional in Product
+# El mapeo continúa normalmente, permitiendo detectar inconsistencias sin romper la funcionalidad
+```
+
+Esto ayuda a detectar problemas de tipado entre tu API y tus modelos, manteniendo la robustez del código.
 
 ### Background Tasks
 

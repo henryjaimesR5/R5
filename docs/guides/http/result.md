@@ -226,6 +226,163 @@ result = await http.get("https://api.example.com/users/1")
 user = result.to(UserDict)
 ```
 
+### Validación de Valores Nulos
+
+R5 valida automáticamente que los valores `None` del JSON sean compatibles con los type hints de tus dataclasses. Si un campo recibe `None` pero no está tipificado como `Optional`, se emite un `UserWarning` indicando la inconsistencia.
+
+#### ¿Por qué es útil?
+
+Esta validación ayuda a detectar discrepancias entre tu API y tus modelos de datos:
+
+- ✅ **Detecta errores de tipado** tempranamente
+- ✅ **No rompe el flujo** - el mapeo continúa normalmente
+- ✅ **Alerta visible** - `UserWarning` en logs y consola
+- ✅ **Documentación viva** - tus type hints reflejan la realidad
+
+#### Ejemplo Básico
+
+```python
+from dataclasses import dataclass
+from typing import Optional
+
+@dataclass
+class Product:
+    id: int
+    name: str                    # No es Optional
+    price: float                 # No es Optional
+    description: Optional[str]   # Es Optional
+    stock: Optional[int]         # Es Optional
+
+# Caso 1: Campos opcionales con None (sin warning)
+result = await http.get("https://api.example.com/products/1")
+# JSON: {"id": 1, "name": "Laptop", "price": 999.99, "description": null, "stock": null}
+
+product = result.to(Product)
+# ✅ Sin warnings - description y stock son Optional
+
+if product:
+    print(f"{product.name}: ${product.price}")  # Laptop: $999.99
+    print(f"Stock: {product.stock}")            # Stock: None
+```
+
+#### Ejemplo con Warning
+
+```python
+# Caso 2: Campo no-opcional con None (emite warning)
+result = await http.get("https://api.example.com/products/2")
+# JSON: {"id": 2, "name": null, "price": 49.99, "description": "Teclado", "stock": 5}
+
+product = result.to(Product)
+# ⚠️ UserWarning: Fields ['name'] have None values but are not typed as Optional in Product
+
+if product:
+    print(f"ID: {product.id}")      # ID: 2
+    print(f"Name: {product.name}")  # Name: None (mapeado pero con warning)
+    print(f"Price: {product.price}") # Price: 49.99
+```
+
+#### Ejemplo con Múltiples Campos
+
+```python
+@dataclass
+class Order:
+    id: int
+    customer_name: str      # No Optional
+    customer_email: str     # No Optional
+    notes: Optional[str]    # Optional
+
+# JSON con múltiples campos null en no-opcionales
+result = await http.get("https://api.example.com/orders/1")
+# JSON: {"id": 1, "customer_name": null, "customer_email": null, "notes": null}
+
+order = result.to(Order)
+# ⚠️ UserWarning: Fields ['customer_name', 'customer_email'] have None values 
+#                 but are not typed as Optional in Order
+
+# El mapeo continúa y puedes manejar el caso
+if order and (order.customer_name is None or order.customer_email is None):
+    print("⚠️ Orden incompleta - datos de cliente faltantes")
+```
+
+#### Comportamiento según Tipo
+
+| Tipo Destino | Validación | Notas |
+|--------------|------------|-------|
+| `@dataclass` | ✅ Activa | Valida campos no-opcionales con None |
+| `Pydantic BaseModel` | ⚠️ Pydantic | Pydantic ya valida con `model_validate()` |
+| `dict` | ❌ Inactiva | No hay type hints que validar |
+| `list` | ❌ Inactiva | No hay type hints que validar |
+| `TypedDict` | ❌ Inactiva | Runtime no valida TypedDict |
+
+#### Capturar Warnings en Tests
+
+```python
+import warnings
+
+def test_null_validation():
+    """Test que captura warnings de validación."""
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.json.return_value = {
+            "id": 1,
+            "name": None,  # None en campo no-opcional
+            "price": 99.99
+        }
+        
+        result = Result(response=mock_response, status=200)
+        product = result.to(Product)
+        
+        # Verificar warning
+        assert len(w) == 1
+        assert "not typed as Optional" in str(w[0].message)
+        assert "name" in str(w[0].message)
+        
+        # Objeto mapeado de todas formas
+        assert product is not None
+        assert product.id == 1
+        assert product.name is None
+```
+
+#### Mejores Prácticas
+
+1. **Usa `Optional` correctamente**
+   ```python
+   @dataclass
+   class User:
+       id: int
+       name: str
+       email: Optional[str]  # Puede ser None
+   ```
+
+2. **Presta atención a los warnings**
+   - Indica desajuste entre API y modelo
+   - Actualiza tipos o corrige la API
+
+3. **Documentación explícita**
+   ```python
+   @dataclass
+   class Config:
+       """Configuración de la app.
+       
+       Attributes:
+           api_key: Requerido - nunca None
+           timeout: Opcional - puede ser None
+       """
+       api_key: str
+       timeout: Optional[int]
+   ```
+
+4. **Testing con valores None**
+   ```python
+   def test_handles_none_values():
+       """Verifica manejo de None en campos opcionales."""
+       data = {"id": 1, "name": "Test", "description": None}
+       product = map_to_product(data)
+       assert product.description is None  # OK porque es Optional
+   ```
+
 ## Manejo de Errores
 
 ### Mapping Failure
