@@ -5,6 +5,8 @@
 [![Python Version](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 [![Documentation](https://img.shields.io/badge/docs-mkdocs-blue)](https://r5.dev)
+[![GitHub](https://img.shields.io/badge/github-repo-black)](https://github.com/henryjaimesR5/R5)
+
 
 ---
 
