@@ -1,6 +1,8 @@
 import pytest
+import warnings
 from unittest.mock import Mock, AsyncMock, patch, MagicMock
 from dataclasses import dataclass
+from typing import Optional
 import httpx
 
 from R5.http import Http, Result
@@ -13,6 +15,27 @@ class TestUser:
     id: int
     name: str
     email: str
+
+
+@dataclass
+class TestUserWithOptional:
+    id: int
+    name: str
+    email: Optional[str]
+
+
+@dataclass
+class StrictUser:
+    id: int
+    name: str
+    email: str
+
+
+@dataclass
+class AllOptionalUser:
+    id: Optional[int]
+    name: Optional[str]
+    email: Optional[str]
 
 
 @pytest.fixture
@@ -771,3 +794,202 @@ class TestRetryWithWhenConditions:
                 assert events.count("after:200") == 1  # Segunda respuesta
                 assert events.count("status:503") == 1  # Handler para 503
                 assert events.count("status:200") == 1  # Handler para 200
+
+
+class TestResultNullValidation:
+    """Tests para validación de valores None en campos no-opcionales."""
+    
+    def test_optional_field_with_none_no_warning(self):
+        """Campo opcional con None no debe emitir warning."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.json.return_value = {
+            "id": 1,
+            "name": "John",
+            "email": None
+        }
+        
+        result = Result(response=mock_response, status=200)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            user = result.to(TestUserWithOptional)
+            
+            assert len(w) == 0
+            assert user is not None
+            assert user.id == 1
+            assert user.name == "John"
+            assert user.email is None
+    
+    def test_non_optional_field_with_none_emits_warning(self):
+        """Campo no-opcional con None debe emitir warning."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.json.return_value = {
+            "id": 1,
+            "name": None,
+            "email": "test@example.com"
+        }
+        
+        result = Result(response=mock_response, status=200)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            user = result.to(StrictUser)
+            
+            assert len(w) == 1
+            assert issubclass(w[0].category, UserWarning)
+            assert "name" in str(w[0].message)
+            assert "not typed as Optional" in str(w[0].message)
+            assert "StrictUser" in str(w[0].message)
+            
+            assert user is not None
+            assert user.id == 1
+            assert user.name is None
+            assert user.email == "test@example.com"
+    
+    def test_multiple_non_optional_fields_with_none_emits_warning(self):
+        """Múltiples campos no-opcionales con None deben emitir warning."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.json.return_value = {
+            "id": None,
+            "name": None,
+            "email": None
+        }
+        
+        result = Result(response=mock_response, status=200)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            user = result.to(StrictUser)
+            
+            assert len(w) == 1
+            assert issubclass(w[0].category, UserWarning)
+            
+            message = str(w[0].message)
+            assert "id" in message
+            assert "name" in message
+            assert "email" in message
+            
+            assert user is not None
+    
+    def test_all_optional_fields_with_none_no_warning(self):
+        """Todos los campos opcionales con None no deben emitir warning."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.json.return_value = {
+            "id": None,
+            "name": None,
+            "email": None
+        }
+        
+        result = Result(response=mock_response, status=200)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            user = result.to(AllOptionalUser)
+            
+            assert len(w) == 0
+            assert user is not None
+            assert user.id is None
+            assert user.name is None
+            assert user.email is None
+    
+    def test_non_optional_field_with_value_no_warning(self):
+        """Campo no-opcional con valor no debe emitir warning."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.json.return_value = {
+            "id": 1,
+            "name": "John",
+            "email": "test@example.com"
+        }
+        
+        result = Result(response=mock_response, status=200)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            user = result.to(StrictUser)
+            
+            assert len(w) == 0
+            assert user is not None
+            assert user.id == 1
+            assert user.name == "John"
+            assert user.email == "test@example.com"
+    
+    def test_missing_field_no_warning(self):
+        """Campo faltante en JSON no debe emitir warning de None."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.json.return_value = {
+            "id": 1,
+            "name": "John"
+        }
+        
+        result = Result(response=mock_response, status=200)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            try:
+                user = result.to(TestUserWithOptional)
+            except TypeError:
+                pass
+            
+            warning_messages = [str(warning.message) for warning in w if issubclass(warning.category, UserWarning)]
+            assert not any("not typed as Optional" in msg for msg in warning_messages)
+    
+    def test_validation_only_for_dataclass(self):
+        """Validación solo aplica a dataclass, no a dict."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.json.return_value = {
+            "id": None,
+            "name": None,
+            "email": None
+        }
+        
+        result = Result(response=mock_response, status=200)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            data = result.to(dict)
+            
+            assert len(w) == 0
+            assert data is not None
+            assert data["id"] is None
+            assert data["name"] is None
+    
+    def test_is_optional_type_detects_optional(self):
+        """_is_optional_type debe detectar correctamente Optional[T]."""
+        result = Result()
+        
+        assert result._is_optional_type(Optional[str]) is True
+        assert result._is_optional_type(Optional[int]) is True
+        assert result._is_optional_type(str) is False
+        assert result._is_optional_type(int) is False
+    
+    def test_validate_null_values_returns_non_optional_fields(self):
+        """_validate_null_values debe retornar campos con None que no son Optional."""
+        result = Result()
+        
+        data = {"id": 1, "name": None, "email": None}
+        null_fields = result._validate_null_values(data, TestUserWithOptional)
+        
+        assert "name" in null_fields
+        assert "email" not in null_fields
+        assert "id" not in null_fields
+        assert len(null_fields) == 1
+    
+    def test_dataclass_mapping_with_mixed_null_values(self):
+        """Test mapeo de dataclass con valores nulos mixtos."""
+        mock_response = Mock(spec=httpx.Response)
+        mock_response.json.return_value = {
+            "id": 100,
+            "name": "Alice",
+            "email": None
+        }
+        
+        result = Result(response=mock_response, status=200)
+        
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            user = result.to(TestUserWithOptional)
+            
+            assert len(w) == 0
+            assert user.id == 100
+            assert user.name == "Alice"
+            assert user.email is None
