@@ -1,8 +1,8 @@
 site_name: R5 Framework
 site_description: Modern Python framework with IoC, HTTP client, and background tasks
-site_url: https://r5.dev
-repo_url: https://github.com/grupor5/R5
-repo_name: grupor5/R5
+site_url: https://henryjaimesR5.github.io/R5
+repo_url: https://github.com/henryjaimesR5/R5
+repo_name: henryjaimesR5/R5
 
 theme:
   name: material
