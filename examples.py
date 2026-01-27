@@ -11,17 +11,19 @@ Ejecutar con: uv run python examples.py
 import asyncio
 import time
 from dataclasses import dataclass
+import logging
 
 from R5.background import Background
 from R5.http import Http
-from R5.ioc import singleton, inject, Container
+from R5.ioc import singleton, inject, factory
 
 
+logging.basicConfig(level=logging.INFO)
 # ============================================================================
 # SERVICIOS DE EJEMPLO
 # ============================================================================
 
-@singleton
+@factory
 class EmailService:
     async def send(self, to: str, subject: str) -> None:
         print(f"[EmailService] Enviando a {to}: {subject}")
@@ -97,19 +99,14 @@ async def demo_ioc_advanced():
 
 async def demo_background_basic():
     """Ejemplo básico de ejecución en background."""
-    print("\n" + "="*60)
-    print("DEMO Background: Básico")
-    print("="*60 + "\n")
     
     @inject
     async def process_tasks(bg: Background):
-        print("Agregando tareas...")
         await bg.add(lambda: print("[Task 1] Ejecutada"))
         await bg.add(lambda: print("[Task 2] Ejecutada"))
         await asyncio.sleep(0.2)
     
     await process_tasks()  # type: ignore
-    print("\n✅ Tareas ejecutadas en background\n")
 
 
 async def demo_background_with_ioc():
@@ -118,12 +115,12 @@ async def demo_background_with_ioc():
     print("DEMO Background: Con IoC")
     print("="*60 + "\n")
     
+    @inject
     def task_with_log(log: LogService, message: str):
         log.log(f"Background task: {message}")
     
     @inject
-    async def process_with_services(bg: Background, log: LogService):
-        log.log("Iniciando tareas en background")
+    async def process_with_services(bg: Background):
         await bg.add(task_with_log, message="Tarea 1")
         await bg.add(task_with_log, message="Tarea 2")
         await asyncio.sleep(0.2)
@@ -149,7 +146,7 @@ async def demo_background_concurrent():
                 i
             )
         
-        await asyncio.sleep(0.4)
+        await asyncio.sleep(1.5)
         elapsed = time.time() - start
         print(f"\n✅ 5 tareas en {elapsed:.2f}s (concurrencia)")
     
