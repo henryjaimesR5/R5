@@ -67,11 +67,12 @@ def _inject_dependencies(
 
 
 def inject(func: F) -> F:
-    sig = inspect.signature(func)
+    original_func = inspect.unwrap(func)
+    sig = inspect.signature(original_func)
     deps_to_inject: dict[str, type | None] = {}
     
     try:
-        type_hints = get_type_hints(func)
+        type_hints = get_type_hints(original_func)
     except Exception as e:
         import warnings
         warnings.warn(
