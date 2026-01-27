@@ -1,9 +1,0 @@
-app_name: TestAppFromYAML
-debug: false
-port: 9000
-host: localhost
-workers: 2
-features:
-  - feature1
-  - feature2
-  - feature3
