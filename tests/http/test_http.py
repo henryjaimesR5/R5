@@ -42,9 +42,9 @@ class AllOptionalUser:
 def http_config():
     """Config básica para tests."""
     config = HttpConfig()
-    config.max_connections = 10
-    config.connect_timeout = 5.0
-    config.proxies = ["http://proxy1:8080", "http://proxy2:8080"]
+    config.http_max_connections = 10
+    config.http_connect_timeout = 5.0
+    config.http_proxies = ["http://proxy1:8080", "http://proxy2:8080"]
     return config
 
 
@@ -360,27 +360,27 @@ class TestHttpConfig:
         """Test configuración por defecto."""
         config = HttpConfig()
         
-        assert config.max_connections == 100
-        assert config.connect_timeout == 5.0
-        assert config.user_agent == "R5-HttpClient/1.0"
-        assert config.follow_redirects is True
+        assert config.http_max_connections == 100
+        assert config.http_connect_timeout == 5.0
+        assert config.http_user_agent == "R5-HttpClient/1.0"
+        assert config.http_follow_redirects is True
     
     def test_custom_config(self):
         """Test configuración personalizada."""
         config = HttpConfig()
-        config.max_connections = 50
-        config.connect_timeout = 10.0
-        config.proxies = ["http://proxy:8080"]
+        config.http_max_connections = 50
+        config.http_connect_timeout = 10.0
+        config.http_proxies = ["http://proxy:8080"]
         
-        assert config.max_connections == 50
-        assert config.connect_timeout == 10.0
-        assert config.proxies == ["http://proxy:8080"]
+        assert config.http_max_connections == 50
+        assert config.http_connect_timeout == 10.0
+        assert config.http_proxies == ["http://proxy:8080"]
     
     def test_config_validation(self):
         """Test validación de configuración."""
         config = HttpConfig()
-        config.max_connections = 200
-        assert config.max_connections == 200
+        config.http_max_connections = 200
+        assert config.http_max_connections == 200
 
 
 class TestIntegrationWithIoC:

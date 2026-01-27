@@ -1,0 +1,2 @@
+class BackgroundDisabledException(Exception):
+    pass

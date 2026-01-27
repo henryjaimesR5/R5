@@ -8,19 +8,17 @@ from anyio.abc import TaskGroup
 
 from R5.ioc import resource, inject, config
 from R5._utils import get_logger
+from R5.background.errors import BackgroundDisabledException
 
 
 logger = get_logger(__name__)
 
 
 @config(file='application.yml', required=False)
-class BackgroundConfig:
+class _BackgroundConfig:
     background_enable: bool = True
     background_max_workers: int = 2
 
-
-class BackgroundDisabledException(Exception):
-    pass
 
 @resource
 class Background:
@@ -64,7 +62,7 @@ class Background:
             await bg.add(task1)
     """
     @inject
-    def __init__(self, config: BackgroundConfig) -> None:
+    def __init__(self, config: _BackgroundConfig) -> None:
         self._config = config
         self._task_group: TaskGroup | None = None
         self._max_workers = config.background_max_workers
