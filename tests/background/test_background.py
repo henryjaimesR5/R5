@@ -2,7 +2,7 @@ import asyncio
 import pytest
 
 from R5.background import Background
-from R5.ioc import singleton
+from R5.ioc import inject, singleton
 from R5.ioc.container import Container
 
 
@@ -154,7 +154,8 @@ class TestIoCIntegration:
         """Verifica inyección automática de dependencias IoC."""
         service = Container.resolve(TestService)
         initial_count = service.call_count
-        
+
+        @inject
         def task_auto_inject(test_service: TestService):
             test_service.increment()
         

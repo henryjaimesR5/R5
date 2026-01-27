@@ -658,19 +658,6 @@ dependencies = [
     { name = "pyyaml" },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-cov" },
-]
-docs = [
-    { name = "mkdocs" },
-    { name = "mkdocs-material" },
-    { name = "mkdocstrings", extra = ["python"] },
-    { name = "mkdocstrings-python" },
-]
-
 [package.dev-dependencies]
 dev = [
     { name = "pytest" },
@@ -689,18 +676,10 @@ requires-dist = [
     { name = "anyio", specifier = ">=4.12.0" },
     { name = "dependency-injector", specifier = ">=4.48.3" },
     { name = "httpx", specifier = ">=0.28.1" },
-    { name = "mkdocs", marker = "extra == 'docs'", specifier = ">=1.5.0" },
-    { name = "mkdocs-material", marker = "extra == 'docs'", specifier = ">=9.5.0" },
-    { name = "mkdocstrings", extras = ["python"], marker = "extra == 'docs'", specifier = ">=0.24.0" },
-    { name = "mkdocstrings-python", marker = "extra == 'docs'", specifier = ">=1.8.0" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
-    { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0.0" },
-    { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23.0" },
-    { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=4.1.0" },
     { name = "pyyaml", specifier = ">=6.0.3" },
 ]
-provides-extras = ["dev", "docs"]
 
 [package.metadata.requires-dev]
 dev = [

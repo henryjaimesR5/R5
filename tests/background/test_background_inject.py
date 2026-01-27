@@ -102,7 +102,8 @@ class TestBackgroundWithInject:
         """Verifica tarea con inyección IoC automática."""
         service = Container.resolve(TestServiceInject)
         initial_count = service.call_count
-        
+
+        @inject
         def task_with_ioc(svc: TestServiceInject):
             svc.increment()
         
