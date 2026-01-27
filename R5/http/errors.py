@@ -3,6 +3,11 @@ class HttpError(Exception):
     pass
 
 
+class HttpDisabledException(Exception):
+    """Error cuando el cliente HTTP está deshabilitado."""
+    pass
+
+
 class HttpTimeoutError(HttpError):
     """Error de timeout en request HTTP."""
     pass

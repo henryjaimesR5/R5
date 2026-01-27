@@ -6,12 +6,21 @@ from typing import Any
 from anyio import to_thread, create_task_group, CapacityLimiter
 from anyio.abc import TaskGroup
 
-from R5.ioc import resource
+from R5.ioc import resource, inject, config
 from R5._utils import get_logger
 
 
 logger = get_logger(__name__)
 
+
+@config(file='application.yml', required=False)
+class BackgroundConfig:
+    background_enable: bool = True
+    background_max_workers: int = 2
+
+
+class BackgroundDisabledException(Exception):
+    pass
 
 @resource
 class Background:
@@ -54,10 +63,12 @@ class Background:
             bg = Background()
             await bg.add(task1)
     """
-    def __init__(self, max_workers: int = 2) -> None:
+    @inject
+    def __init__(self, config: BackgroundConfig) -> None:
+        self._config = config
         self._task_group: TaskGroup | None = None
-        self._max_workers = max_workers
-        self._limiter = CapacityLimiter(max_workers)
+        self._max_workers = config.background_max_workers
+        self._limiter = CapacityLimiter(config.background_max_workers)
         self._started = False
     
     async def __aenter__(self) -> 'Background':
@@ -73,6 +84,9 @@ class Background:
                 logger.info("Background shutdown completed")
     
     async def add(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
+        if not self._config.background_enable:
+            raise BackgroundDisabledException
+
         if not self._started:
             self._task_group = create_task_group()
             await self._task_group.__aenter__()

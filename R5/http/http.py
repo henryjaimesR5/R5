@@ -4,9 +4,10 @@ import httpx
 
 from R5.ioc import resource, inject, config
 from R5.http.result import Result
+from R5.http.errors import HttpDisabledException
 
 
-@config(file='.env')
+@config(file='application.yml', required=False)
 class HttpConfig:
     """Configuración para el cliente HTTP.
     
@@ -27,26 +28,26 @@ class HttpConfig:
         user_agent: User-Agent por defecto
         follow_redirects: Si debe seguir redirecciones por defecto
     """
+    http_enable: bool = True
+    http_max_connections: int = 100
+    http_max_keepalive_connections: int = 20
+    http_keepalive_expiry: float = 5.0
     
-    max_connections: int = 100
-    max_keepalive_connections: int = 20
-    keepalive_expiry: float = 5.0
+    http_connect_timeout: float = 5.0
+    http_read_timeout: float = 30.0
+    http_write_timeout: float = 30.0
+    http_pool_timeout: float = 5.0
     
-    connect_timeout: float = 5.0
-    read_timeout: float = 30.0
-    write_timeout: float = 30.0
-    pool_timeout: float = 5.0
+    http_max_retries: int = 3
+    http_retry_backoff_factor: float = 0.5
+    http_retry_statuses: list[int] = [429, 500, 502, 503, 504]
     
-    max_retries: int = 3
-    retry_backoff_factor: float = 0.5
-    retry_statuses: list[int] = [429, 500, 502, 503, 504]
+    http_proxies: list[str] = []
+    http_proxy_rotation: bool = True
     
-    proxies: list[str] = []
-    proxy_rotation: bool = True
-    
-    default_headers: dict[str, str] = {}
-    user_agent: str = "R5-HttpClient/1.0"
-    follow_redirects: bool = True
+    http_default_headers: dict[str, str] = {}
+    http_user_agent: str = "R5-HttpClient/1.0"
+    http_follow_redirects: bool = True
 
 
 @resource
@@ -76,8 +77,8 @@ class Http:
         self._config = config
         self._client: Optional[httpx.AsyncClient] = None
         
-        self._proxies = config.proxies
-        self._proxy_cycle = cycle(config.proxies) if config.proxies else None
+        self._proxies = config.http_proxies
+        self._proxy_cycle = cycle(config.http_proxies) if config.http_proxies else None
         
         self._before_handlers: list[Callable[[httpx.Request], None]] = []
         self._after_handlers: list[Callable[[httpx.Request, httpx.Response], None]] = []
@@ -115,28 +116,28 @@ class Http:
         """
         if self._client is None:
             limits = httpx.Limits(
-                max_connections=self._config.max_connections,
-                max_keepalive_connections=self._config.max_keepalive_connections,
-                keepalive_expiry=self._config.keepalive_expiry
+                max_connections=self._config.http_max_connections,
+                max_keepalive_connections=self._config.http_max_keepalive_connections,
+                keepalive_expiry=self._config.http_keepalive_expiry
             )
             
             timeout = httpx.Timeout(
-                connect=self._config.connect_timeout,
-                read=self._config.read_timeout,
-                write=self._config.write_timeout,
-                pool=self._config.pool_timeout
+                connect=self._config.http_connect_timeout,
+                read=self._config.http_read_timeout,
+                write=self._config.http_write_timeout,
+                pool=self._config.http_pool_timeout
             )
             
             default_headers = {
-                "User-Agent": self._config.user_agent,
-                **self._config.default_headers
+                "User-Agent": self._config.http_user_agent,
+                **self._config.http_default_headers
             }
             
             self._client = httpx.AsyncClient(
                 limits=limits,
                 timeout=timeout,
                 headers=default_headers,
-                follow_redirects=self._config.follow_redirects
+                follow_redirects=self._config.http_follow_redirects
             )
         
         return self._client
@@ -252,6 +253,9 @@ class Http:
         Returns:
             Result con response o exception
         """
+        if not self._config.http_enable:
+            raise HttpDisabledException
+
         import asyncio
         
         retry_attempts = self._retry_attempts if self._retry_attempts is not None else 0
