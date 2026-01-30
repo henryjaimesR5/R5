@@ -3,18 +3,17 @@ import inspect
 from collections.abc import Callable
 from typing import Any
 
-from anyio import to_thread, create_task_group, CapacityLimiter
+from anyio import CapacityLimiter, create_task_group, to_thread
 from anyio.abc import TaskGroup
 
-from R5.ioc import resource, inject, config
 from R5._utils import get_logger
-from R5.background.errors import BackgroundDisabledException
-
+from R5.background.errors import BackgroundDisabledError
+from R5.ioc import config, inject, resource
 
 logger = get_logger(__name__)
 
 
-@config(file='application.yml', required=False)
+@config(file="application.yml", required=False)
 class _BackgroundConfig:
     background_enable: bool = True
     background_max_workers: int = 2
@@ -52,15 +51,16 @@ class Background:
                 await bg.add(task2)
 
         Uso con inicialización directa (tradicional):
-        
+
         Note:
-            No se recomienda la inicialización directa fuera de entornos de prueba. 
+            No se recomienda la inicialización directa fuera de entornos de prueba.
             Prefiera el uso de `@inject` para asegurar la correcta gestión de recursos.
 
         .. code-block:: python
             bg = Background()
             await bg.add(task1)
     """
+
     @inject
     def __init__(self, config: _BackgroundConfig) -> None:
         self._config = config
@@ -68,10 +68,10 @@ class Background:
         self._max_workers = config.background_max_workers
         self._limiter = CapacityLimiter(config.background_max_workers)
         self._started = False
-    
-    async def __aenter__(self) -> 'Background':
+
+    async def __aenter__(self) -> "Background":
         return self
-    
+
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         if self._started and self._task_group:
             try:
@@ -80,10 +80,10 @@ class Background:
                 self._started = False
                 self._task_group = None
                 logger.info("Background shutdown completed")
-    
+
     async def add(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
         if not self._config.background_enable:
-            raise BackgroundDisabledException
+            raise BackgroundDisabledError
 
         if not self._started:
             self._task_group = create_task_group()
@@ -91,26 +91,20 @@ class Background:
             self._started = True
             logger.debug(f"Background initialized with {self._max_workers} workers")
 
-        self._task_group.start_soon(
-            self._safe_task, func, args, kwargs
-        )
+        if self._task_group:
+            self._task_group.start_soon(self._safe_task, func, args, kwargs)
 
     async def _safe_task(
-        self, 
-        func: Callable[..., Any], 
-        args: tuple[Any, ...], 
-        kwargs: dict[str, Any]
+        self, func: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
     ):
         try:
             if inspect.iscoroutinefunction(func):
                 await func(*args, **kwargs)
             else:
                 await to_thread.run_sync(
-                    functools.partial(func, *args, **kwargs),
-                limiter=self._limiter
-            )
+                    functools.partial(func, *args, **kwargs), limiter=self._limiter
+                )
         except Exception as e:
             logger.warning(
-                f"Error in background task {func.__name__}: {e}",
-                exc_info=True
+                f"Error in background task {func.__name__}: {e}", exc_info=True
             )
