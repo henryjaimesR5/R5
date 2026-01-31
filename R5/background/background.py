@@ -3,7 +3,13 @@ import inspect
 from collections.abc import Callable
 from typing import Any
 
-from anyio import CapacityLimiter, create_task_group, to_thread
+from anyio import (
+    CapacityLimiter,
+    Lock,
+    create_task_group,
+    get_cancelled_exc_class,
+    to_thread,
+)
 from anyio.abc import TaskGroup
 
 from R5._utils import get_logger
@@ -68,6 +74,7 @@ class Background:
         self._max_workers = config.background_max_workers
         self._limiter = CapacityLimiter(config.background_max_workers)
         self._started = False
+        self._lock = Lock()
 
     async def __aenter__(self) -> "Background":
         return self
@@ -75,36 +82,47 @@ class Background:
     async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
         if self._started and self._task_group:
             try:
-                await self._task_group.__aexit__(None, None, None)
+                await self._task_group.__aexit__(exc_type, exc_val, exc_tb)
             finally:
                 self._started = False
                 self._task_group = None
-                logger.info("Background shutdown completed")
+                logger.debug("Background shutdown completed")
 
     async def add(self, func: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
         if not self._config.background_enable:
             raise BackgroundDisabledError
 
-        if not self._started:
-            self._task_group = create_task_group()
-            await self._task_group.__aenter__()
-            self._started = True
-            logger.debug(f"Background initialized with {self._max_workers} workers")
+        async with self._lock:
+            if not self._started:
+                self._task_group = create_task_group()
+                await self._task_group.__aenter__()
+                self._started = True
+                logger.debug(f"Background initialized with {self._max_workers} workers")
 
         if self._task_group:
             self._task_group.start_soon(self._safe_task, func, args, kwargs)
 
+    @staticmethod
+    def _is_async_callable(func: Callable[..., Any]) -> bool:
+        """Detecta si un callable es async, incluyendo clases con __call__ async."""
+        if inspect.iscoroutinefunction(func):
+            return True
+        if hasattr(func, "__call__") and not inspect.isfunction(func):
+            return inspect.iscoroutinefunction(func.__call__)
+        return False
+
     async def _safe_task(
         self, func: Callable[..., Any], args: tuple[Any, ...], kwargs: dict[str, Any]
     ):
+        func_name = getattr(func, "__name__", repr(func))
+
         try:
-            if inspect.iscoroutinefunction(func):
-                await func(*args, **kwargs)
-            else:
-                await to_thread.run_sync(
-                    functools.partial(func, *args, **kwargs), limiter=self._limiter
-                )
-        except Exception as e:
-            logger.warning(
-                f"Error in background task {func.__name__}: {e}", exc_info=True
-            )
+            async with self._limiter:
+                if self._is_async_callable(func):
+                    await func(*args, **kwargs)
+                else:
+                    await to_thread.run_sync(functools.partial(func, *args, **kwargs))
+        except get_cancelled_exc_class():
+            raise
+        except Exception:
+            logger.exception(f"Error in background task {func_name}")
