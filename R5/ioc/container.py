@@ -3,12 +3,11 @@ import warnings
 from collections.abc import Callable
 from contextvars import ContextVar
 from enum import Enum
-from typing import Any, TypeVar, ParamSpec, Type, get_type_hints
+from typing import Any, ParamSpec, Type, TypeVar, get_type_hints
 
 from dependency_injector import providers
 
-from R5.ioc.errors import ProviderNotFoundError, CircularDependencyError
-
+from R5.ioc.errors import CircularDependencyError, ProviderNotFoundError
 
 F = TypeVar("F", bound=Callable[..., Any])
 P = ParamSpec("P")
@@ -26,7 +25,7 @@ class Container:
     _resolution_stack: ContextVar[list[str] | None] = ContextVar(
         "_resolution_stack", default=None
     )
-    
+
     @classmethod
     def get_container(cls) -> dict[type[Any] | Callable[..., Any], providers.Provider]:
         return cls._container_by_type
@@ -61,13 +60,13 @@ class Container:
         if stack is None:
             stack = []
             cls._resolution_stack.set(stack)
-        
+
         dep_name = f"{dep_type.__module__}.{dep_type.__qualname__}"
-        
+
         if dep_name in stack:
             stack.append(dep_name)
             raise CircularDependencyError(stack)
-        
+
         stack.append(dep_name)
         try:
             provider = cls.get_provider(dep_type)
@@ -88,25 +87,27 @@ class Container:
             Scope.FACTORY: providers.Factory,
             Scope.RESOURCE: providers.Resource,
         }
-        
+
         if func_or_cls in cls._container_by_type:
             warnings.warn(
                 f"Provider for type '{func_or_cls.__name__}' is being overwritten. "
                 f"This might indicate duplicate registrations.",
                 UserWarning,
-                stacklevel=4
+                stacklevel=4,
             )
-        
+
         provider_class = provider_scope[scope]
-        
+
         if isinstance(func_or_cls, type):
             try:
                 sig = inspect.signature(func_or_cls.__init__)
                 params = [
-                    p for p in sig.parameters.values() 
-                    if p.name not in ('self', 'cls') and p.annotation != inspect.Parameter.empty
+                    p
+                    for p in sig.parameters.values()
+                    if p.name not in ("self", "cls")
+                    and p.annotation != inspect.Parameter.empty
                 ]
-                
+
                 if params:
                     type_hints = get_type_hints(func_or_cls.__init__)
                     injectable_params = {}
@@ -115,35 +116,40 @@ class Container:
                             dep_type = type_hints[p.name]
                             if isinstance(dep_type, type) and cls.in_provider(dep_type):
                                 injectable_params[p.name] = dep_type
-                    
+
                     if injectable_params:
-                        def factory(injectable_params=injectable_params, target_cls=func_or_cls):
+
+                        def factory(
+                            injectable_params=injectable_params, target_cls=func_or_cls
+                        ):
                             kwargs = {
                                 param_name: cls.resolve(dep_type)
                                 for param_name, dep_type in injectable_params.items()
                             }
                             return target_cls(**kwargs)
-                        
+
                         provider = provider_class(factory)
                         cls._container_by_type[func_or_cls] = provider
                         return
             except Exception:
                 pass
-        
+
         provider = provider_class(func_or_cls)
         cls._container_by_type[func_or_cls] = provider
-    
+
     @classmethod
     def reset(cls) -> None:
         cls._container_by_type.clear()
         cls._resolution_stack.set(None)
-    
+
     @classmethod
     def snapshot(cls) -> dict[type[Any] | Callable[..., Any], providers.Provider]:
         return cls._container_by_type.copy()
-    
+
     @classmethod
-    def restore(cls, snapshot: dict[type[Any] | Callable[..., Any], providers.Provider]) -> None:
+    def restore(
+        cls, snapshot: dict[type[Any] | Callable[..., Any], providers.Provider]
+    ) -> None:
         cls._container_by_type.clear()
         cls._container_by_type.update(snapshot)
         cls._resolution_stack.set(None)

@@ -2,7 +2,6 @@ from R5.http.errors import (
     HttpConnectionError,
     HttpError,
     HttpMappingError,
-    HttpResponseError,
     HttpTimeoutError,
 )
 from R5.http.http import Http
@@ -14,6 +13,5 @@ __all__ = [
     "HttpError",
     "HttpTimeoutError",
     "HttpConnectionError",
-    "HttpResponseError",
     "HttpMappingError",
 ]

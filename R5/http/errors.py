@@ -1,31 +1,21 @@
 class HttpError(Exception):
-    """Base exception para errores HTTP."""
-    pass
+    message = "Http error ocurred "
+
+    def __init__(self):
+        super().__init__(self.message)
 
 
-class HttpDisabledException(Exception):
-    """Error cuando el cliente HTTP está deshabilitado."""
-    pass
+class HttpDisabledException(HttpError):
+    message = "Http client is disabled"
 
 
 class HttpTimeoutError(HttpError):
-    """Error de timeout en request HTTP."""
-    pass
+    message = "Http request timed out"
 
 
 class HttpConnectionError(HttpError):
-    """Error de conexión HTTP."""
-    pass
-
-
-class HttpResponseError(HttpError):
-    """Error en respuesta HTTP."""
-    
-    def __init__(self, message: str, status_code: int = 0):
-        super().__init__(message)
-        self.status_code = status_code
+    message = "Http connection error"
 
 
 class HttpMappingError(HttpError):
-    """Error al mapear respuesta a DTO."""
-    pass
+    message = "Http Error mapping response to DTO"
