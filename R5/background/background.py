@@ -33,8 +33,8 @@ class Background:
     un pool de hilos para tareas síncronas e integración con inyección de dependencias.
 
     Attributes:
-        task_group (anyio.abc.TaskGroup): Grupo de tareas para ejecución concurrente.
-        _thread_pool: Pool configurable para tareas bloqueantes (sync).
+        _task_group (anyio.abc.TaskGroup): Grupo de tareas para ejecución concurrente.
+        _limiter (anyio.CapacityLimiter): Limitador de capacidad para controlar concurrencia.
 
     Notes:
         * Soporta inyección de dependencias automática mediante `@R5/ioc`.
@@ -99,16 +99,20 @@ class Background:
                 self._started = True
                 logger.debug(f"Background initialized with {self._max_workers} workers")
 
-        if self._task_group:
-            self._task_group.start_soon(self._safe_task, func, args, kwargs)
+            if self._task_group:
+                self._task_group.start_soon(self._safe_task, func, args, kwargs)
 
     @staticmethod
     def _is_async_callable(func: Callable[..., Any]) -> bool:
-        """Detecta si un callable es async, incluyendo clases con __call__ async."""
+        if isinstance(func, functools.partial):
+            func = func.func
+
         if inspect.iscoroutinefunction(func):
             return True
-        if hasattr(func, "__call__") and not inspect.isfunction(func):
-            return inspect.iscoroutinefunction(func.__call__)
+        if callable(func) and hasattr(func, "__call__"):
+            call_method = getattr(func, "__call__", None)
+            if call_method and inspect.iscoroutinefunction(call_method):
+                return True
         return False
 
     async def _safe_task(
