@@ -314,9 +314,6 @@ make docs-serve
 
 # Con uv directamente
 uv run mkdocs serve
-
-# Con script
-./scripts/serve_docs.sh
 ```
 
 Luego abre http://127.0.0.1:8000
