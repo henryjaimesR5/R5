@@ -2,13 +2,9 @@
 
 **Framework moderno de Python con Inyección de Dependencias, Cliente HTTP y Tareas en Background**
 
-<div align="center">
-
-![Python Version](https://img.shields.io/badge/python-3.14%2B-blue)
-![License](https://img.shields.io/badge/license-MIT-green)
-![Status](https://img.shields.io/badge/status-active-success)
-
-</div>
+[![Python Version](https://img.shields.io/badge/python-3.14%2B-blue)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-MIT-green)](https://opensource.org/licenses/MIT)
+[![Status](https://img.shields.io/badge/status-active-success)](https://github.com/henryjaimesR5/R5)
 
 ---
 
@@ -159,10 +155,6 @@ if __name__ == "__main__":
 - :material-book-open-variant: **[Guías](guides/ioc/overview.md)**
 
     Aprende los conceptos fundamentales
-
-- :material-code-braces: **[Ejemplos](examples/simple.md)**
-
-    Ejemplos prácticos y patrones
 
 - :material-api: **[API Reference](api/ioc.md)**
 

@@ -69,31 +69,26 @@ markdown_extensions:
 nav:
   - Home: index.md
   - Getting Started:
-    - Installation: getting-started/installation.md
-    - Quick Start: getting-started/quickstart.md
-    - Core Concepts: getting-started/core-concepts.md
+      - Installation: getting-started/installation.md
+      - Quick Start: getting-started/quickstart.md
+      - Core Concepts: getting-started/core-concepts.md
   - Guides:
-    - IoC Container:
-      - Overview: guides/ioc/overview.md
-      - Dependency Injection: guides/ioc/injection.md
-      - Providers: guides/ioc/providers.md
-      - Configuration: guides/ioc/configuration.md
-    - HTTP Client:
-      - Overview: guides/http/overview.md
-      - Basic Usage: guides/http/basic-usage.md
-      - Advanced Features: guides/http/advanced.md
-      - Result Pattern: guides/http/result.md
-    - Background Tasks:
-      - Overview: guides/background/overview.md
-      - Basic Usage: guides/background/basic-usage.md
-      - Integration with IoC: guides/background/ioc-integration.md
-  - Examples:
-    - Simple Examples: examples/simple.md
-    - Real World: examples/real-world.md
-    - Patterns: examples/patterns.md
+      - IoC Container:
+          - Overview: guides/ioc/overview.md
+          - Dependency Injection: guides/ioc/injection.md
+          - Providers: guides/ioc/providers.md
+          - Configuration: guides/ioc/configuration.md
+      - HTTP Client:
+          - Overview: guides/http/overview.md
+          - Basic Usage: guides/http/basic-usage.md
+          - Advanced Features: guides/http/advanced.md
+          - Result Pattern: guides/http/result.md
+      - Background Tasks:
+          - Overview: guides/background/overview.md
+          - Basic Usage: guides/background/basic-usage.md
+          - Integration with IoC: guides/background/ioc-integration.md
   - API Reference:
-    - IoC: api/ioc.md
-    - HTTP: api/http.md
-    - Background: api/background.md
+      - IoC: api/ioc.md
+      - HTTP: api/http.md
+      - Background: api/background.md
   - Contributing: contributing.md
-  - Changelog: changelog.md
