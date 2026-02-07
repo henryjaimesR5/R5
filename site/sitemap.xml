@@ -1,95 +1,95 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
     <url>
-         <loc>https://r5.dev/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/changelog/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/changelog/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/contributing/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/contributing/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/api/background/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/api/background/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/api/http/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/api/http/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/api/ioc/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/api/ioc/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/examples/patterns/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/examples/patterns/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/examples/real-world/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/examples/real-world/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/examples/simple/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/examples/simple/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/getting-started/core-concepts/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/getting-started/core-concepts/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/getting-started/installation/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/getting-started/installation/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/getting-started/quickstart/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/getting-started/quickstart/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/background/basic-usage/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/background/basic-usage/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/background/ioc-integration/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/background/ioc-integration/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/background/overview/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/background/overview/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/http/advanced/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/http/advanced/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/http/basic-usage/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/http/basic-usage/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/http/overview/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/http/overview/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/http/result/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/http/result/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/ioc/configuration/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/ioc/configuration/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/ioc/injection/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/ioc/injection/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/ioc/overview/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/ioc/overview/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
     <url>
-         <loc>https://r5.dev/guides/ioc/providers/</loc>
-         <lastmod>2026-01-26</lastmod>
+         <loc>https://henryjaimesR5.github.io/R5/guides/ioc/providers/</loc>
+         <lastmod>2026-02-07</lastmod>
     </url>
 </urlset>

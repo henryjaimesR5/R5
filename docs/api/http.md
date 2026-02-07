@@ -47,6 +47,12 @@ Documentación completa de la API del módulo HTTP.
     options:
       show_source: true
 
+### HttpDisabledException
+
+::: R5.http.errors.HttpDisabledException
+    options:
+      show_source: true
+
 ### HttpTimeoutError
 
 ::: R5.http.errors.HttpTimeoutError
@@ -56,12 +62,6 @@ Documentación completa de la API del módulo HTTP.
 ### HttpConnectionError
 
 ::: R5.http.errors.HttpConnectionError
-    options:
-      show_source: true
-
-### HttpResponseError
-
-::: R5.http.errors.HttpResponseError
     options:
       show_source: true
 
