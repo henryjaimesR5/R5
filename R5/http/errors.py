@@ -1,8 +1,12 @@
-class HttpError(Exception):
-    message = "Http error ocurred "
+from typing import Optional
 
-    def __init__(self):
-        super().__init__(self.message)
+
+class HttpError(Exception):
+    message = "Http error occurred"
+
+    def __init__(self, custom_message: Optional[str] = None):
+        msg = custom_message if custom_message else self.message
+        super().__init__(msg)
 
 
 class HttpDisabledException(HttpError):

@@ -806,82 +806,20 @@ class TestRetryWithWhenConditions:
                 assert events.count("status:200") == 1  # Handler para 200
 
 
-class TestProxyChaining:
-    """Tests para método .proxy() con rotación."""
+class TestProxy:
+    """Tests para configuración de proxy."""
 
     @pytest.mark.asyncio
-    async def test_proxy_single_string(self):
-        """Test proxy único con string."""
+    async def test_proxy_from_config(self):
+        """Test proxy configurado en HttpConfig se usa."""
         config = HttpConfig()
-        http = Http(config)
-
-        http.proxy("http://proxy:8080")
-
-        assert http._proxy_list == ["http://proxy:8080"]
-        assert http._proxy_index == 0
-        assert http._proxy_rotate_on_status is None
-        assert http._proxy_rotate_on_exception is None
-
-    @pytest.mark.asyncio
-    async def test_proxy_list(self):
-        """Test proxy con lista."""
-        config = HttpConfig()
-        http = Http(config)
-
-        proxies = ["http://p1:8080", "http://p2:8080", "http://p3:8080"]
-        http.proxy(proxies)
-
-        assert http._proxy_list == proxies
-        assert http._proxy_index == 0
-
-    @pytest.mark.asyncio
-    async def test_proxy_with_rotate_on_status(self):
-        """Test proxy con rotación en status específicos."""
-        config = HttpConfig()
-        http = Http(config)
-
-        http.proxy(["http://p1:8080", "http://p2:8080"], rotate_on_status=(403, 429))
-
-        assert http._proxy_rotate_on_status == (403, 429)
-
-    @pytest.mark.asyncio
-    async def test_proxy_with_rotate_on_exception(self):
-        """Test proxy con rotación en excepciones específicas."""
-        config = HttpConfig()
-        http = Http(config)
-
-        http.proxy(
-            ["http://p1:8080", "http://p2:8080"],
-            rotate_on_exception=(httpx.ConnectError, httpx.TimeoutException),
-        )
-
-        assert http._proxy_rotate_on_exception == (
-            httpx.ConnectError,
-            httpx.TimeoutException,
-        )
-
-    @pytest.mark.asyncio
-    async def test_proxy_chaining_with_retry(self):
-        """Test chaining de proxy + retry."""
-        config = HttpConfig()
-        http = Http(config)
-
-        result = http.proxy(["http://p1:8080", "http://p2:8080"]).retry(3, delay=1.0)
-
-        assert result is http
-        assert http._proxy_list == ["http://p1:8080", "http://p2:8080"]
-        assert http._retry_attempts == 3
-
-    @pytest.mark.asyncio
-    async def test_proxy_clear_after_request(self):
-        """Test que la config de proxy se limpia después de request."""
-        config = HttpConfig()
+        config.http_proxy = "http://proxy:8080"
         http = Http(config)
 
         async with http:
-            with patch.object(http, "_ensure_client") as mock_client_getter:
+            with patch.object(http, "_create_proxy_client") as mock_create_proxy:
                 mock_client = AsyncMock()
-                mock_client_getter.return_value = mock_client
+                mock_create_proxy.return_value = mock_client
 
                 response = Mock(spec=httpx.Response)
                 response.status_code = 200
@@ -892,12 +830,93 @@ class TestProxyChaining:
 
                 mock_client.build_request = Mock(return_value=request)
                 mock_client.send = AsyncMock(return_value=response)
+                mock_client.is_closed = False
                 mock_client.aclose = AsyncMock()
 
-                http.proxy("http://proxy:8080")
                 await http.get("http://test.com")
 
-                assert http._proxy_list == []
+                mock_create_proxy.assert_called_once_with("http://proxy:8080")
+
+    @pytest.mark.asyncio
+    async def test_proxy_from_request_param(self):
+        """Test proxy en request() se usa."""
+        config = HttpConfig()
+        http = Http(config)
+
+        async with http:
+            with patch.object(http, "_create_proxy_client") as mock_create_proxy:
+                mock_client = AsyncMock()
+                mock_create_proxy.return_value = mock_client
+
+                response = Mock(spec=httpx.Response)
+                response.status_code = 200
+                request = Mock(spec=httpx.Request)
+                request.url = "http://test.com"
+                request.method = "GET"
+                response.request = request
+
+                mock_client.build_request = Mock(return_value=request)
+                mock_client.send = AsyncMock(return_value=response)
+                mock_client.is_closed = False
+                mock_client.aclose = AsyncMock()
+
+                await http.get("http://test.com", proxy="http://custom-proxy:8080")
+
+                mock_create_proxy.assert_called_once_with("http://custom-proxy:8080")
+
+    @pytest.mark.asyncio
+    async def test_proxy_request_overrides_config(self):
+        """Test parámetro de request tiene prioridad sobre config."""
+        config = HttpConfig()
+        config.http_proxy = "http://config-proxy:8080"
+        http = Http(config)
+
+        async with http:
+            with patch.object(http, "_create_proxy_client") as mock_create_proxy:
+                mock_client = AsyncMock()
+                mock_create_proxy.return_value = mock_client
+
+                response = Mock(spec=httpx.Response)
+                response.status_code = 200
+                request = Mock(spec=httpx.Request)
+                request.url = "http://test.com"
+                request.method = "GET"
+                response.request = request
+
+                mock_client.build_request = Mock(return_value=request)
+                mock_client.send = AsyncMock(return_value=response)
+                mock_client.is_closed = False
+                mock_client.aclose = AsyncMock()
+
+                await http.get("http://test.com", proxy="http://request-proxy:8080")
+
+                # Debería usar el proxy del request, no el de config
+                mock_create_proxy.assert_called_once_with("http://request-proxy:8080")
+
+    @pytest.mark.asyncio
+    async def test_no_proxy_uses_default_client(self):
+        """Test sin proxy usa cliente normal."""
+        config = HttpConfig()
+        http = Http(config)
+
+        async with http:
+            with patch.object(http, "_ensure_client") as mock_ensure:
+                mock_client = AsyncMock()
+                mock_ensure.return_value = mock_client
+
+                response = Mock(spec=httpx.Response)
+                response.status_code = 200
+                request = Mock(spec=httpx.Request)
+                request.url = "http://test.com"
+                request.method = "GET"
+                response.request = request
+
+                mock_client.build_request = Mock(return_value=request)
+                mock_client.send = AsyncMock(return_value=response)
+
+                await http.get("http://test.com")
+
+                mock_ensure.assert_called()
 
 
 class TestResultNullValidation:
@@ -920,7 +939,7 @@ class TestResultNullValidation:
             assert user.name == "John"
             assert user.email is None
 
-    def test_non_optional_field_with_none_emits_warning(self):
+    def test_non_optional_field_with_none_emits_warning(self, caplog):
         """Campo no-opcional con None debe emitir warning."""
         mock_response = Mock(spec=httpx.Response)
         mock_response.json.return_value = {
@@ -931,36 +950,34 @@ class TestResultNullValidation:
 
         result = Result(response=mock_response, status=200)
 
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+        with caplog.at_level("WARNING"):
             user = result.to(StrictUser)
 
-            assert len(w) == 1
-            assert issubclass(w[0].category, UserWarning)
-            assert "name" in str(w[0].message)
-            assert "not typed as Optional" in str(w[0].message)
-            assert "StrictUser" in str(w[0].message)
+            assert len(caplog.records) == 1
+            assert caplog.records[0].levelname == "WARNING"
+            assert "name" in caplog.text
+            assert "not typed as Optional" in caplog.text
+            assert "StrictUser" in caplog.text
 
             assert user is not None
             assert user.id == 1
             assert user.name is None
             assert user.email == "test@example.com"
 
-    def test_multiple_non_optional_fields_with_none_emits_warning(self):
+    def test_multiple_non_optional_fields_with_none_emits_warning(self, caplog):
         """Múltiples campos no-opcionales con None deben emitir warning."""
         mock_response = Mock(spec=httpx.Response)
         mock_response.json.return_value = {"id": None, "name": None, "email": None}
 
         result = Result(response=mock_response, status=200)
 
-        with warnings.catch_warnings(record=True) as w:
-            warnings.simplefilter("always")
+        with caplog.at_level("WARNING"):
             user = result.to(StrictUser)
 
-            assert len(w) == 1
-            assert issubclass(w[0].category, UserWarning)
+            assert len(caplog.records) == 1
+            assert caplog.records[0].levelname == "WARNING"
 
-            message = str(w[0].message)
+            message = caplog.text
             assert "id" in message
             assert "name" in message
             assert "email" in message

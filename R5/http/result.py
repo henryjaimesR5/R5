@@ -1,10 +1,12 @@
-import warnings
 from dataclasses import dataclass, fields, is_dataclass
 from typing import Callable, Optional, Type, TypeVar, Union, get_args, get_origin
 
 import httpx
 
+from R5._utils import get_logger
+
 T = TypeVar("T")
+_logger = get_logger(__name__)
 
 
 @dataclass
@@ -84,10 +86,8 @@ class Result:
 
             null_fields = self._validate_null_values(filtered_data, target_type)
             if null_fields:
-                warnings.warn(
-                    f"Fields {null_fields} have None values but are not typed as Optional in {target_type.__name__}",
-                    UserWarning,
-                    stacklevel=4,
+                _logger.warning(
+                    f"Fields {null_fields} have None values but are not typed as Optional in {target_type.__name__}"
                 )
 
             return target_type(**filtered_data)
@@ -107,5 +107,9 @@ class Result:
             return None
         try:
             return self._map_response(self.response, target_type)
-        except Exception:
+        except Exception as e:
+            _logger.warning(
+                f"Failed to map response to {target_type.__name__}: {e}",
+                exc_info=True
+            )
             return None

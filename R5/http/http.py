@@ -1,8 +1,9 @@
-from typing import Any, Callable, Optional
+from typing import Any, Callable, Optional, Union
 
 from anyio import sleep
 import httpx
 
+from R5._utils import get_logger
 from R5.http.errors import HttpConnectionError, HttpDisabledException, HttpTimeoutError
 from R5.http.result import Result
 from R5.ioc import config, inject, resource
@@ -23,11 +24,34 @@ class HttpConfig:
     http_follow_redirects: bool = True
     http_retry_delay: float = 1.0
     http_retry_backoff: float = 2.0
+    http_proxy: Optional[str] = None
+
+    def __post_init__(self):
+        """Validar configuración al instanciar."""
+        if self.http_max_connections <= 0:
+            raise ValueError("http_max_connections must be > 0")
+
+        if self.http_max_keepalive_connections < 0:
+            raise ValueError("http_max_keepalive_connections must be >= 0")
+
+        if self.http_max_keepalive_connections > self.http_max_connections:
+            raise ValueError("http_max_keepalive_connections cannot exceed http_max_connections")
+
+        timeouts = ['http_connect_timeout', 'http_read_timeout', 'http_write_timeout', 'http_pool_timeout']
+        for field in timeouts:
+            if getattr(self, field) <= 0:
+                raise ValueError(f"{field} must be > 0")
+
+        if self.http_retry_delay < 0:
+            raise ValueError("http_retry_delay must be >= 0")
+
+        if self.http_retry_backoff < 1:
+            raise ValueError("http_retry_backoff must be >= 1")
 
 
 @resource
 class Http:
-    """Cliente HTTP asíncrono con pooling, retry y proxy rotation.
+    """Cliente HTTP asíncrono con pooling, retry y mapeo a DTOs.
 
     Uso:
         @inject
@@ -38,12 +62,15 @@ class Http:
         Retry:
             http.retry(3, delay=1.0, when_status=(503,)).get(url)
 
-        Proxy:
-            http.proxy("http://proxy:8080").get(url)
-            http.proxy(["http://p1:8080", "http://p2:8080"]).get(url)
+        Proxy (global en config):
+            # application.yml
+            http_proxy: "http://proxy:8080"
+
+        Proxy (por request):
+            http.get(url, proxy="http://proxy:8080")
 
         Chaining:
-            http.proxy(proxies).retry(3).on_before(handler).get(url)
+            http.retry(3).on_before(handler).get(url)
 
         Result:
             user = await http.get("/users/1").to(UserDTO)
@@ -52,6 +79,7 @@ class Http:
     @inject
     def __init__(self, config: HttpConfig):
         self._config = config
+        self._logger = get_logger(__name__)
         self._client: Optional[httpx.AsyncClient] = None
         self._before_handlers: list[Callable[[httpx.Request], None]] = []
         self._after_handlers: list[Callable[[httpx.Request, httpx.Response], None]] = []
@@ -60,10 +88,6 @@ class Http:
         self._retry_backoff: float = config.http_retry_backoff
         self._retry_when_status: Optional[tuple[int, ...]] = None
         self._retry_when_exception: Optional[tuple[type[Exception], ...]] = None
-        self._proxy_list: list[str] = []
-        self._proxy_index: int = 0
-        self._proxy_rotate_on_status: Optional[tuple[int, ...]] = None
-        self._proxy_rotate_on_exception: Optional[tuple[type[Exception], ...]] = None
 
     async def __aenter__(self) -> "Http":
         return self
@@ -135,26 +159,15 @@ class Http:
         self._retry_when_exception = when_exception
         return self
 
-    def proxy(
-        self,
-        proxies: str | list[str],
-        rotate_on_status: Optional[tuple[int, ...]] = None,
-        rotate_on_exception: Optional[tuple[type[Exception], ...]] = None,
-    ) -> "Http":
-        self._proxy_list = [proxies] if isinstance(proxies, str) else proxies
-        self._proxy_index = 0
-        self._proxy_rotate_on_status = rotate_on_status
-        self._proxy_rotate_on_exception = rotate_on_exception
-        return self
-
     async def request(
         self,
         method: str,
         url: str,
         *,
+        proxy: Optional[str] = None,
         params: Optional[dict] = None,
         json: Optional[dict] = None,
-        data: Optional[Any] = None,
+        data: Optional[Union[dict, str, bytes]] = None,
         content: Optional[bytes] = None,
         headers: Optional[dict[str, str]] = None,
         timeout: Optional[float] = None,
@@ -168,6 +181,7 @@ class Http:
         return await self._request(
             method,
             url,
+            proxy=proxy,
             params=params,
             json=json,
             data=data,
@@ -186,6 +200,7 @@ class Http:
         self,
         method: str,
         url: str,
+        proxy: Optional[str] = None,
         timeout: Optional[float] = None,
         follow_redirects: Optional[bool] = None,
         on_before: Optional[Callable[[httpx.Request], None]] = None,
@@ -197,6 +212,9 @@ class Http:
         if not self._config.http_enable:
             raise HttpDisabledException
 
+        # Determinar proxy efectivo (prioridad: parámetro > config)
+        effective_proxy = proxy if proxy is not None else self._config.http_proxy
+
         retry_attempts = self._retry_attempts or 0
         current_delay = self._retry_delay
         result: Optional[Result] = None
@@ -205,9 +223,13 @@ class Http:
         try:
             for attempt in range(retry_attempts + 1):
                 try:
-                    client = await self._get_client(proxy_client)
-                    if self._proxy_list and proxy_client is None:
-                        proxy_client = client
+                    # Usar proxy si está configurado, sino cliente normal
+                    if effective_proxy:
+                        if proxy_client is None:
+                            proxy_client = self._create_proxy_client(effective_proxy)
+                        client = proxy_client
+                    else:
+                        client = await self._ensure_client()
 
                     request_kwargs = kwargs.copy()
                     if timeout is not None:
@@ -218,6 +240,10 @@ class Http:
                         send_kwargs["follow_redirects"] = follow_redirects
 
                     request = client.build_request(method, url, **request_kwargs)
+
+                    # Log inicio de request
+                    proxy_info = f" via proxy {effective_proxy}" if effective_proxy else ""
+                    self._logger.debug(f"HTTP {method} {url}{proxy_info}")
 
                     for handler in self._before_handlers:
                         handler(request)
@@ -236,25 +262,29 @@ class Http:
                     if on_status and result.status in on_status:
                         on_status[result.status]()
 
-                    if self._should_rotate_on_status(result.status):
-                        proxy_client = await self._rotate_proxy(proxy_client)
-
                     if self._should_retry_on_status(
                         result.status, attempt, retry_attempts
                     ):
+                        self._logger.debug(
+                            f"Retrying request (attempt {attempt + 1}/{retry_attempts + 1}) "
+                            f"due to status {result.status}, waiting {current_delay}s"
+                        )
                         await sleep(current_delay)
                         current_delay *= self._retry_backoff
                         continue
 
+                    # Log successful completion
+                    self._logger.debug(f"Request completed with status {result.status}")
                     return result
 
                 except Exception as e:
                     result = self._handle_exception(e, on_exception)
 
-                    if self._should_rotate_on_exception(e):
-                        proxy_client = await self._rotate_proxy(proxy_client)
-
                     if self._should_retry_on_exception(e, attempt, retry_attempts):
+                        self._logger.debug(
+                            f"Retrying request (attempt {attempt + 1}/{retry_attempts + 1}) "
+                            f"due to {type(e).__name__}, waiting {current_delay}s"
+                        )
                         await sleep(current_delay)
                         current_delay *= self._retry_backoff
                         continue
@@ -277,10 +307,13 @@ class Http:
 
         if isinstance(e, httpx.TimeoutException):
             error = HttpTimeoutError()
+            self._logger.warning(f"HTTP request timed out: {e}")
         elif isinstance(e, httpx.ConnectError):
             error = HttpConnectionError()
+            self._logger.warning(f"HTTP connection error: {e}")
         else:
             error = e
+            self._logger.warning(f"HTTP error: {type(e).__name__}: {e}")
 
         result = Result.from_exception(error, response)
 
@@ -288,39 +321,6 @@ class Http:
             on_exception(e)
 
         return result
-
-    async def _get_client(
-        self, current_proxy_client: Optional[httpx.AsyncClient]
-    ) -> httpx.AsyncClient:
-        if self._proxy_list:
-            if current_proxy_client and not current_proxy_client.is_closed:
-                return current_proxy_client
-            return self._create_proxy_client(self._proxy_list[self._proxy_index])
-        return await self._ensure_client()
-
-    def _should_rotate_on_status(self, status: int) -> bool:
-        return bool(
-            self._proxy_list
-            and self._proxy_rotate_on_status
-            and status in self._proxy_rotate_on_status
-        )
-
-    def _should_rotate_on_exception(self, e: Exception) -> bool:
-        return bool(
-            self._proxy_list
-            and self._proxy_rotate_on_exception
-            and isinstance(e, self._proxy_rotate_on_exception)
-        )
-
-    async def _rotate_proxy(
-        self, current_client: Optional[httpx.AsyncClient]
-    ) -> Optional[httpx.AsyncClient]:
-        if current_client and not current_client.is_closed:
-            await current_client.aclose()
-        if self._proxy_list:
-            self._proxy_index = (self._proxy_index + 1) % len(self._proxy_list)
-            return self._create_proxy_client(self._proxy_list[self._proxy_index])
-        return None
 
     def _should_retry_on_status(
         self, status: int, attempt: int, max_attempts: int
@@ -346,10 +346,6 @@ class Http:
         self._retry_backoff = self._config.http_retry_backoff
         self._retry_when_status = None
         self._retry_when_exception = None
-        self._proxy_list = []
-        self._proxy_index = 0
-        self._proxy_rotate_on_status = None
-        self._proxy_rotate_on_exception = None
 
     async def get(self, url: str, **kwargs: Any) -> Result:
         return await self.request("GET", url, **kwargs)
