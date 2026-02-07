@@ -84,4 +84,3 @@ Ver [Guía Background](../guides/background/overview.md) para detalles.
 - [IoC Container](../guides/ioc/overview.md) - Inyección de dependencias
 - [HTTP Client](../guides/http/overview.md) - Cliente HTTP
 - [Background Tasks](../guides/background/overview.md) - Tareas concurrentes
-- [Ejemplos](../examples/simple.md) - Código de ejemplo
